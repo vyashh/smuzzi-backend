@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Header
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from database import SessionLocal
-from models import Song
+from models import Song, Folder
 import os
 from schemas import SongBase
 from sqlalchemy import text
@@ -26,17 +26,25 @@ def get_songs(db: Session = Depends(get_db)):
 def stream_song(
     song_id: int,
     request: Request,
-    range: str | None = Header(default=None),  # 👈 grab Range header
+    range: str | None = Header(default=None),
     db: Session = Depends(get_db)
 ):
+    # 🔹 Get song
     song = db.query(Song).filter(Song.id == song_id).first()
     if not song:
         raise HTTPException(status_code=404, detail="Song not found")
 
-    file_path = os.path.join("music", song.filename)
+    # 🔹 Get folder for this song
+    folder = db.query(Folder).filter(Folder.id == song.folder_id).first()
+    if not folder:
+        raise HTTPException(status_code=404, detail="Folder not found")
+
+    # 🔹 Build full file path
+    file_path = os.path.join(folder.path, song.filename)
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="File not found")
 
+    # 🔹 Support Range requests
     file_size = os.path.getsize(file_path)
     start = 0
     end = file_size - 1
@@ -67,4 +75,3 @@ def stream_song(
     }
 
     return StreamingResponse(iterfile(file_path, start, end), status_code=206, headers=headers)
-
