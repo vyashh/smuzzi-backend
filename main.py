@@ -1,13 +1,15 @@
 from fastapi import FastAPI
 from database import Base, engine
-from routes import auth, songs, folders
+import auth  
+from routes import songs, folders, playlists 
 
 app = FastAPI()
 
-#This line ensures tables exist in smuzzi.db
+# Ensure tables exist in smuzzi.db
 Base.metadata.create_all(bind=engine)
 
-#Register routers
+# Register routers
 app.include_router(auth.router, prefix="/api")
 app.include_router(songs.router, prefix="/api")
 app.include_router(folders.router, prefix="/api")
+app.include_router(playlists.router, prefix="/api")
