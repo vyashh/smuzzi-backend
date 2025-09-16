@@ -2,10 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Header
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from database import SessionLocal
-from models import Song, Folder
+from models import Song, Folder, User
 import os
 from schemas import SongBase
 from sqlalchemy import text
+from auth import get_current_user
+
 
 router = APIRouter()
 
@@ -75,3 +77,10 @@ def stream_song(
     }
 
     return StreamingResponse(iterfile(file_path, start, end), status_code=206, headers=headers)
+
+@router.get("/songs/{song_id}")
+def get_song(song_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    song = db.query(Song).join(Song.folder).filter(Song.id == song_id, Song.folder.has(user_id=user.id)).first()
+    if not song:
+        raise HTTPException(status_code=404, detail="Song not found")
+    return song
