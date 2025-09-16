@@ -25,3 +25,8 @@ class PlaylistBase(BaseModel):
 
 class PlaylistCreate(BaseModel):
     name: str
+
+class SettingsUpdate(BaseModel):
+    theme: str | None = None
+    server_url: str | None = None
+    profile_picture: str | None = None

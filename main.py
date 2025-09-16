@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from database import Base, engine
 import auth  
-from routes import songs, folders, playlists 
+from routes import songs, folders, playlists, settings
 
 app = FastAPI()
 
@@ -13,3 +13,4 @@ app.include_router(auth.router, prefix="/api")
 app.include_router(songs.router, prefix="/api")
 app.include_router(folders.router, prefix="/api")
 app.include_router(playlists.router, prefix="/api")
+app.include_router(settings.router, prefix="/api")  
