@@ -67,16 +67,35 @@ def login(username: str, password: str, db: Session = Depends(get_db)):
 # ---------- JWT Dependency ----------
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/login")
 
-def get_current_user(token: str = Depends(oauth2_scheme)):
-    """Decode JWT and return user info"""
+from fastapi import Depends, HTTPException
+from jose import JWTError, jwt
+from sqlalchemy.orm import Session
+from database import SessionLocal
+from models import User
+
+# keep your SECRET_KEY, ALGORITHM, etc. as they are
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
+    """Decode JWT and return User model"""
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get("sub")
         user_id: int = payload.get("id")
-        if username is None or user_id is None:
+        if user_id is None:
             raise HTTPException(status_code=401, detail="Invalid token")
 
-        return {"id": user_id, "username": username}
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            raise HTTPException(status_code=401, detail="User not found")
+
+        return user
 
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")

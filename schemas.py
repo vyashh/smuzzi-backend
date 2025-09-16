@@ -2,6 +2,10 @@ from pydantic import BaseModel
 from datetime import datetime
 from typing import List, Optional
 
+
+# ------------------
+# Songs
+# ------------------
 class SongBase(BaseModel):
     id: int
     title: str
@@ -13,7 +17,11 @@ class SongBase(BaseModel):
 
     class Config:
         from_attributes = True 
-        
+
+
+# ------------------
+# Playlists
+# ------------------
 class PlaylistBase(BaseModel):
     id: int
     name: str
@@ -23,10 +31,23 @@ class PlaylistBase(BaseModel):
     class Config:
         from_attributes = True
 
+
 class PlaylistCreate(BaseModel):
     name: str
 
+
+# ------------------
+# Settings
+# ------------------
 class SettingsUpdate(BaseModel):
     theme: str | None = None
     server_url: str | None = None
     profile_picture: str | None = None
+
+
+# ------------------
+# Spotify Credentials
+# ------------------
+class SpotifyCredentials(BaseModel):
+    client_id: str
+    client_secret: str
