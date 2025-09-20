@@ -12,7 +12,6 @@ class User(Base):
     username = Column(String, unique=True, nullable=False)
     password_hash = Column(String, nullable=False)
 
-    # Relationships
     folders = relationship("Folder", back_populates="user", cascade="all, delete-orphan")
     playlists = relationship("Playlist", back_populates="user", cascade="all, delete-orphan")
     favorites = relationship("Favorite", back_populates="user", cascade="all, delete-orphan")
@@ -28,14 +27,14 @@ class Song(Base):
     title = Column(String, nullable=False)
     artist = Column(String)
     album = Column(String)
-    duration = Column(Integer)                 # in seconds
-    filename = Column(String, nullable=False)  # filename only
+    duration = Column(Integer)
+    filename = Column(String, nullable=False)   # just the file name
+    filepath = Column(String, nullable=False)   # relative path from folder root ✅
     cover_url = Column(String, nullable=True)
     spotify_id = Column(String, nullable=True)
     created_at = Column(TIMESTAMP, server_default=func.now())
-    folder_id = Column(Integer, ForeignKey("folders.id"), nullable=True)  # link to folders
+    folder_id = Column(Integer, ForeignKey("folders.id"), nullable=True)
 
-    # Relationships
     folder = relationship("Folder", back_populates="songs")
 
 
@@ -49,7 +48,6 @@ class Playlist(Base):
     user_id = Column(Integer, ForeignKey("users.id"))
     created_at = Column(TIMESTAMP, server_default=func.now())
 
-    # Relationships
     user = relationship("User", back_populates="playlists")
     tracks = relationship("PlaylistTrack", back_populates="playlist", cascade="all, delete-orphan")
 
@@ -64,7 +62,6 @@ class PlaylistTrack(Base):
     track_id = Column(Integer, ForeignKey("songs.id"), nullable=False)
     order_index = Column(Integer)
 
-    # Relationships
     playlist = relationship("Playlist", back_populates="tracks")
 
 
@@ -78,7 +75,6 @@ class Favorite(Base):
     track_id = Column(Integer, ForeignKey("songs.id"), nullable=False)
     created_at = Column(TIMESTAMP, server_default=func.now())
 
-    # Relationships
     user = relationship("User", back_populates="favorites")
 
 
@@ -92,7 +88,6 @@ class History(Base):
     track_id = Column(Integer, ForeignKey("songs.id"), nullable=False)
     played_at = Column(TIMESTAMP, server_default=func.now())
 
-    # Relationships
     user = relationship("User", back_populates="history")
 
 
@@ -101,7 +96,6 @@ class History(Base):
 # ------------------
 class Folder(Base):
     __tablename__ = "folders"
-
     id = Column(Integer, primary_key=True, index=True)
     path = Column(String, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
@@ -112,6 +106,7 @@ class Folder(Base):
     __table_args__ = (
         UniqueConstraint("path", "user_id", name="uq_user_folder"),
     )
+
 
 # ------------------
 # Settings
