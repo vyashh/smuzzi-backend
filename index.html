@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Smuzzi Player</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        background: #121212;
+        color: #fff;
+        padding: 20px;
+      }
+      #songs {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        margin-top: 20px;
+      }
+      .song {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        padding: 10px;
+        background: #1e1e1e;
+        border-radius: 8px;
+      }
+      .song img {
+        width: 64px;
+        height: 64px;
+        object-fit: cover;
+        border-radius: 4px;
+      }
+      .song-details {
+        flex: 1;
+      }
+      .song-details h4 {
+        margin: 0;
+        font-size: 16px;
+      }
+      .song-details p {
+        margin: 0;
+        font-size: 14px;
+        color: #aaa;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Smuzzi Player</h1>
+    <div>
+      <input id="username" placeholder="Username" value="vyash" />
+      <input
+        id="password"
+        type="password"
+        placeholder="Password"
+        value="password"
+      />
+      <button onclick="login()">Login</button>
+    </div>
+    <div id="songs"></div>
+
+    <script>
+      let token = null;
+      let currentAudio = null;
+
+      async function login() {
+        const username = document.getElementById("username").value;
+        const password = document.getElementById("password").value;
+
+        const res = await fetch("http://localhost:3000/api/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, password }),
+        });
+
+        if (!res.ok) {
+          alert("Login failed");
+          return;
+        }
+
+        const data = await res.json();
+        token = data.access_token;
+        console.log("Logged in, token:", token);
+
+        loadSongs();
+      }
+
+      async function loadSongs() {
+        const res = await fetch("http://localhost:3000/api/songs", {
+          headers: { Authorization: "Bearer " + token },
+        });
+
+        if (!res.ok) {
+          alert("Failed to load songs");
+          return;
+        }
+
+        const songs = await res.json();
+        const container = document.getElementById("songs");
+        container.innerHTML = "";
+
+        songs.forEach((song) => {
+          const div = document.createElement("div");
+          div.className = "song";
+
+          const img = document.createElement("img");
+          img.src = song.cover_url || "https://placehold.co/64x64?text=♪";
+
+          const details = document.createElement("div");
+          details.className = "song-details";
+          details.innerHTML = `
+            <h4>${song.title}</h4>
+            <p>${song.artist || "Unknown Artist"} - ${
+            song.album || "Unknown Album"
+          }</p>
+          `;
+
+          const audio = document.createElement("audio");
+          audio.controls = true;
+          // 🔹 No more ?token appended to stream URL
+          audio.src = `http://localhost:3000/api/stream/${song.id}`;
+          audio.addEventListener("play", () => {
+            if (currentAudio && currentAudio !== audio) {
+              currentAudio.pause();
+            }
+            currentAudio = audio;
+          });
+
+          div.appendChild(img);
+          div.appendChild(details);
+          div.appendChild(audio);
+          container.appendChild(div);
+        });
+      }
+    </script>
+  </body>
+</html>
