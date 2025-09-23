@@ -6,12 +6,14 @@ from models import Folder, Song, User
 import os
 from mutagen import File as MutagenFile
 from mutagen import MutagenError
+import ffmpeg
 
 from services.spotify import enrich_song_from_spotify
 
 router = APIRouter()
 
 
+# ---------- DB ----------
 def get_db():
     db = SessionLocal()
     try:
@@ -20,6 +22,27 @@ def get_db():
         db.close()
 
 
+# ---------- Conversion Helper ----------
+def convert_to_mp3_320(input_path: str, output_path: str):
+    """
+    Convert any audio file to 320kbps MP3.
+    Overwrites the output if it already exists.
+    """
+    try:
+        (
+            ffmpeg
+            .input(input_path)
+            .output(output_path, audio_bitrate="320k", format="mp3", acodec="libmp3lame")
+            .overwrite_output()
+            .run(quiet=False)  # quiet=False → show ffmpeg logs in console
+        )
+        print(f"✅ Converted {input_path} -> {output_path}")
+    except Exception as e:
+        print(f"❌ Conversion failed for {input_path}: {e}")
+        raise
+
+
+# ---------- Routes ----------
 @router.post("/folders")
 def add_folder(path: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     existing = db.query(Folder).filter(Folder.path == path, Folder.user_id == user.id).first()
@@ -39,14 +62,31 @@ def list_folders(db: Session = Depends(get_db), user: User = Depends(get_current
 
 
 def scan_folder(folder: Folder, db: Session, user_id: int):
-    """Walk a folder, extract metadata, and insert into songs + enrich via Spotify."""
+    """Walk a folder, convert non-mp3s, extract metadata, and insert into songs + enrich via Spotify."""
     added_songs = []
     for root, _, files in os.walk(folder.path):
         for filename in files:
             if filename.lower().endswith((".mp3", ".flac", ".wav", ".ogg")):
                 file_path = os.path.abspath(os.path.join(root, filename))
 
-                # 🔹 Check by FULL PATH (not just filename)
+                # Convert if not mp3
+                if not filename.lower().endswith(".mp3"):
+                    base_name = os.path.splitext(filename)[0]
+                    mp3_path = os.path.join(root, f"{base_name}.mp3")
+
+                    print(f"🔄 Converting {file_path} -> {mp3_path}")
+                    convert_to_mp3_320(file_path, mp3_path)
+
+                    try:
+                        os.remove(file_path)
+                        print(f"🗑️ Deleted old file: {file_path}")
+                    except Exception as e:
+                        print(f"⚠️ Could not delete {file_path}: {e}")
+
+                    file_path = mp3_path
+                    filename = f"{base_name}.mp3"
+
+                # Skip duplicates
                 existing = db.query(Song).filter_by(filepath=file_path, folder_id=folder.id).first()
                 if existing:
                     continue
@@ -80,7 +120,7 @@ def scan_folder(folder: Folder, db: Session, user_id: int):
                     album=album,
                     duration=duration,
                     filename=filename,
-                    filepath=file_path,   # ✅ absolute path
+                    filepath=file_path,
                     folder_id=folder.id,
                 )
                 db.add(song)
@@ -118,6 +158,26 @@ def rebuild_folder(folder_id: int, db: Session = Depends(get_db), user: User = D
 
     updated = 0
     for song in db.query(Song).filter(Song.folder_id == folder.id).all():
+        file_path = song.filepath
+        if not file_path:
+            continue
+
+        # Convert if not mp3
+        if not file_path.lower().endswith(".mp3"):
+            base_name, _ = os.path.splitext(os.path.basename(file_path))
+            mp3_path = os.path.join(folder.path, f"{base_name}.mp3")
+
+            print(f"🔄 Rebuilding {file_path} -> {mp3_path}")
+            convert_to_mp3_320(file_path, mp3_path)
+
+            if os.path.exists(file_path):
+                os.remove(file_path)
+                print(f"🗑️ Deleted old file: {file_path}")
+
+            song.filepath = mp3_path
+            song.filename = f"{base_name}.mp3"
+            db.commit()
+
         try:
             if enrich_song_from_spotify(db, song, user.id):
                 updated += 1
