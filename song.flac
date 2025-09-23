@@ -1,0 +1,8 @@
+HTTP/2 405 
+allow: GET
+content-type: application/json
+date: Tue, 23 Sep 2025 00:49:01 GMT
+ngrok-agent-ips: 2001:1c00:f37:9500:39d3:eb01:315c:b603
+server: uvicorn
+content-length: 31
+
