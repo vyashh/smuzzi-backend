@@ -16,6 +16,8 @@ class User(Base):
     playlists = relationship("Playlist", back_populates="user", cascade="all, delete-orphan")
     favorites = relationship("Favorite", back_populates="user", cascade="all, delete-orphan")
     history = relationship("History", back_populates="user", cascade="all, delete-orphan")
+    # NEW: likes on the user
+    likes = relationship("Like", back_populates="user", cascade="all, delete-orphan")
 
 
 # ------------------
@@ -36,6 +38,8 @@ class Song(Base):
     folder_id = Column(Integer, ForeignKey("folders.id"), nullable=True)
 
     folder = relationship("Folder", back_populates="songs")
+    # NEW: likes on the song
+    likes = relationship("Like", back_populates="song", cascade="all, delete-orphan")
 
 
 # ------------------
@@ -118,3 +122,25 @@ class Setting(Base):
     value = Column(Text, nullable=False)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     created_at = Column(TIMESTAMP, server_default=func.now())
+
+
+# ------------------
+# Likes
+# ------------------
+class Like(Base):
+    __tablename__ = "likes"
+    id = Column(Integer, primary_key=True, index=True)
+
+    # REQUIRED foreign keys
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    song_id = Column(Integer, ForeignKey("songs.id", ondelete="CASCADE"), nullable=False, index=True)
+
+    created_at = Column(TIMESTAMP, server_default=func.now())
+
+    # Relationships
+    user = relationship("User", back_populates="likes")
+    song = relationship("Song", back_populates="likes")
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "song_id", name="uq_user_song_like"),
+    )

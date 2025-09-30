@@ -1,11 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, Query, Header
 from fastapi.responses import FileResponse, Response, StreamingResponse
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from database import SessionLocal
-from models import Song, Folder, User
+from models import Song, Folder, User, Like
 from schemas import SongBase
 from auth import get_current_user, dev_or_current_user
 from services.spotify import enrich_song_from_spotify
+from sqlalchemy.exc import IntegrityError
 
 import os, shlex, subprocess, mimetypes, time, uuid, threading, shutil
 from typing import Optional, Tuple
@@ -351,6 +353,22 @@ def hls_segment(
         headers={"Cache-Control": "public, max-age=60"},
     )
 
+
+
+@router.get("/songs/liked")
+def get_liked_songs(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    songs = (
+        db.query(Song)
+        .join(Like, Like.song_id == Song.id)
+        .filter(Like.user_id == user.id)
+        .order_by(Like.created_at.desc())
+        .all()
+    )
+    return songs
+    
 # ========= EXISTING ENDPOINTS =========
 @router.get("/songs/{song_id}")
 def get_song(song_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
@@ -388,3 +406,39 @@ def enrich_missing(db: Session = Depends(get_db), user: User = Depends(dev_or_cu
         except Exception as e:
             print(f"⚠️ enrich error for {s.filename}: {e}")
     return {"count": len(songs), "updated": updated}
+
+@router.post("/songs/{song_id}/like")
+def like_song(
+    song_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),  # <-- model instance, so use user.id
+):
+    song = db.query(Song).filter(Song.id == song_id).first()
+    if not song:
+        raise HTTPException(status_code=404, detail="Song not found")
+
+    # idempotent: if it already exists, just say liked=True
+    existing = db.query(Like).filter_by(user_id=user.id, song_id=song_id).first()
+    if existing:
+        return {"liked": True}
+
+    db.add(Like(user_id=user.id, song_id=song_id))
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()  # in case of race, treat as already liked
+    return {"liked": True}
+
+
+@router.delete("/songs/{song_id}/like")
+def unlike_song(
+    song_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    like = db.query(Like).filter_by(user_id=user.id, song_id=song_id).first()
+    if like:
+        db.delete(like)
+        db.commit()
+    return {"liked": False}
+
