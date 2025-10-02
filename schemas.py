@@ -51,3 +51,7 @@ class SettingsUpdate(BaseModel):
 class SpotifyCredentials(BaseModel):
     client_id: str
     client_secret: str
+
+class LikeToggleResponse(BaseModel):
+    liked: bool
+    likes_count: int
