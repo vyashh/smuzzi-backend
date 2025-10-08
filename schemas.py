@@ -26,6 +26,7 @@ class PlaylistBase(BaseModel):
     id: int
     name: str
     user_id: int
+    description: Optional[str] = None
     created_at: datetime
 
     class Config:
@@ -34,6 +35,7 @@ class PlaylistBase(BaseModel):
 
 class PlaylistCreate(BaseModel):
     name: str
+    description: Optional[str] = None
 
 
 # ------------------

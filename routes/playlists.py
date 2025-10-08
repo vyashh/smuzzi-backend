@@ -5,6 +5,7 @@ from database import SessionLocal
 from models import Playlist, PlaylistTrack, Song, User
 from schemas import PlaylistBase, PlaylistCreate, SongBase
 from auth import get_current_user
+from typing import Optional
 
 router = APIRouter()
 
@@ -19,6 +20,10 @@ def get_db():
 class SongActionPayload(BaseModel):
     song_id: int
 
+class PlaylistUpdatePayload(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str | None] = None
+
 # ---------- Create Playlist (unchanged) ----------
 @router.post("/playlists", response_model=PlaylistBase)
 def create_playlist(
@@ -26,7 +31,7 @@ def create_playlist(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    playlist = Playlist(name=payload.name, user_id=user.id)
+    playlist = Playlist(name=payload.name, user_id=user.id, description=payload.description)
     db.add(playlist)
     db.commit()
     db.refresh(playlist)
@@ -146,3 +151,36 @@ def delete_playlist(
     db.delete(playlist)
     db.commit()
     return {"message": "Playlist deleted"}
+
+@router.patch("/playlists/{playlist_id}", response_model=PlaylistBase)
+def update_playlist(playlist_id: int, payload: PlaylistUpdatePayload, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    playlist = (
+        db.query(Playlist)
+        .filter(Playlist.id == playlist_id, Playlist.user_id == user.id)
+        .first()
+    )
+    if not playlist:
+        raise HTTPException(status_code=404, detail="Playlist not found")
+
+    updated = False
+
+    if payload.name is not None:
+        new_name = payload.name.strip()
+        if not new_name:
+            raise HTTPException(status_code=422, detail="Playlist name cannot be empty")
+        if new_name != playlist.name:
+            playlist.name = new_name
+            updated = True
+
+    if payload.description is not None:
+        if payload.description != playlist.description:
+            playlist.description = payload.description  # accepts str or None
+            updated = True
+
+    if not updated:
+        return playlist
+
+    db.add(playlist)
+    db.commit()
+    db.refresh(playlist)
+    return playlist

@@ -50,6 +50,7 @@ class Playlist(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
     user_id = Column(Integer, ForeignKey("users.id"))
+    description = Column(Text, nullable=True) 
     created_at = Column(TIMESTAMP, server_default=func.now())
 
     user = relationship("User", back_populates="playlists")
