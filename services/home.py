@@ -127,24 +127,44 @@ def tile_favorites(db: Session, user_id: int, limit=8) -> Dict[str, Any]:
     return {"type": "favorites_hub", "title": "Favorites", "summary": {"tracks": total_likes}, "items": items}
 
 def tile_newly_added(db: Session, user_id: int, limit=12) -> Dict[str, Any]:
-    # Uses songs.imported_at if you added it; else returns empty list (tile hidden)
-    if not hasattr(Song, "imported_at"):
+
+    ts_expr = None
+    has_imported = hasattr(Song, "imported_at")
+    has_created = hasattr(Song, "created_at")
+
+    if has_imported and has_created:
+        ts_expr = func.coalesce(Song.imported_at, Song.created_at)
+    elif has_imported:
+        ts_expr = Song.imported_at
+    elif has_created:
+        ts_expr = Song.created_at
+    else:
         return {"type": "newly_added", "title": "New in your library", "items": []}
-    q = (db.query(Song)
-         .filter(Song.imported_at != None)
-         .order_by(desc(Song.imported_at))
-         .limit(limit))
+
+    q = (
+        db.query(Song)
+        .filter(ts_expr != None)                
+        .order_by(desc(ts_expr))
+        .limit(limit)
+    )
+
     items = []
     for trk in q.all():
+        added_at_val = None
+        if has_imported and getattr(trk, "imported_at", None):
+            added_at_val = trk.imported_at
+        elif has_created and getattr(trk, "created_at", None):
+            added_at_val = trk.created_at
+
         items.append({
             "track_id": trk.id,
             "title": trk.title,
             "artist": getattr(trk, "artist", ""),
-            "added_at": trk.imported_at.isoformat() if getattr(trk, "imported_at", None) else None,
-            "cover_url": getattr(trk, "cover_url", None)
+            "added_at": added_at_val.isoformat() if added_at_val else None,
+            "cover_url": getattr(trk, "cover_url", None),
         })
-    return {"type": "newly_added", "title": "New in your library", "items": items}
 
+    return {"type": "newly_added", "title": "New in your library", "items": items}
 def assemble_home(db: Session, user_id: int) -> Dict[str, Any]:
     now = datetime.now(tz=AMS)
     tiles = [

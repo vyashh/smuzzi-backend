@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Literal
 
 
 # ------------------
@@ -57,3 +57,17 @@ class SpotifyCredentials(BaseModel):
 class LikeToggleResponse(BaseModel):
     liked: bool
     likes_count: int
+
+ContextType = Literal["playlist", "folder", "mood", "album", "radio", "unknown"]
+
+class PlayStartIn(BaseModel):
+    track_id: int
+    context_type: Optional[ContextType] = "unknown"
+    context_id: Optional[str] = None
+    source_label: Optional[str] = None
+    position_start_sec: int = 0
+    device: Optional[str] = None
+
+class PlayEndIn(BaseModel):
+    event_id: int
+    position_end_sec: Optional[int] = None
