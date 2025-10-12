@@ -1,7 +1,10 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, TIMESTAMP, Text, UniqueConstraint
+from sqlalchemy import Column, Integer, String, ForeignKey, TIMESTAMP, Text, UniqueConstraint,  DateTime, Boolean, Float, Index
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 from database import Base
+
 
 # ------------------
 # Users
@@ -145,3 +148,47 @@ class Like(Base):
     __table_args__ = (
         UniqueConstraint("user_id", "song_id", name="uq_user_song_like"),
     )
+
+AMS = ZoneInfo("Europe/Amsterdam")
+
+class PlayEvent(Base):
+    __tablename__ = "play_events"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, nullable=False, index=True)
+    track_id = Column(Integer, nullable=False, index=True)
+    context_type = Column(String, nullable=True)   # playlist|folder|mood|album|radio|unknown
+    context_id = Column(String, nullable=True)
+    source_label = Column(String, nullable=True)
+    started_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=AMS))
+    ended_at = Column(DateTime(timezone=True), nullable=True)
+    position_start_sec = Column(Integer, nullable=False, default=0)
+    position_end_sec = Column(Integer, nullable=True)
+    duration_played_sec = Column(Integer, nullable=False, default=0)
+    is_skip = Column(Boolean, nullable=False, default=False)
+    device = Column(String, nullable=True)
+
+Index("idx_play_events_user_started", PlayEvent.user_id, PlayEvent.started_at.desc())
+Index("idx_play_events_user_track", PlayEvent.user_id, PlayEvent.track_id, PlayEvent.started_at.desc())
+
+class CollectionEvent(Base):
+    __tablename__ = "collection_events"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, nullable=False, index=True)
+    track_id = Column(Integer, nullable=False, index=True)
+    action = Column(String, nullable=False)  # like|unlike|add|remove
+    created_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=AMS))
+
+Index("idx_collection_events_user_created", CollectionEvent.user_id, CollectionEvent.created_at.desc())
+
+class ContextProgress(Base):
+    __tablename__ = "context_progress"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, nullable=False, index=True)
+    context_type = Column(String, nullable=False)
+    context_id = Column(String, nullable=False)
+    last_index = Column(Integer, nullable=True)
+    last_track_id = Column(Integer, nullable=True)
+    played_pct = Column(Float, nullable=False, default=0.0)
+    updated_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=AMS))
+
+UniqueConstraint(ContextProgress.user_id, ContextProgress.context_type, ContextProgress.context_id, name="uq_user_ctx")
