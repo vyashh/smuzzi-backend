@@ -10,7 +10,7 @@ from models import User
 from services.play_events import start_event, end_event
 
 # ---- Local request models (avoid import issues) ----
-ContextType = Literal["playlist", "folder", "mood", "album", "radio", "unknown"]
+ContextType = Literal["playlist", "likes", "library", "unknown"]
 
 class PlayStartIn(BaseModel):
     track_id: int

@@ -149,7 +149,9 @@ class Like(Base):
         UniqueConstraint("user_id", "song_id", name="uq_user_song_like"),
     )
 
-AMS = ZoneInfo("Europe/Amsterdam")
+AMS = ZoneInfo("Europe/Amsterdam")\
+
+
 
 class PlayEvent(Base):
     __tablename__ = "play_events"
