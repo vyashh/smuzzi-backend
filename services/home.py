@@ -168,8 +168,8 @@ def tile_newly_added(db: Session, user_id: int, limit=12) -> Dict[str, Any]:
 def assemble_home(db: Session, user_id: int) -> Dict[str, Any]:
     now = datetime.now(tz=AMS)
     tiles = [
-        tile_recently_played(db, user_id),
         tile_most_listened_last_week(db, user_id),
+        tile_recently_played(db, user_id),
         tile_continue_listening(db, user_id),
         tile_favorites(db, user_id),
         tile_newly_added(db, user_id),

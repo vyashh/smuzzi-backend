@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database import Base, engine
 import auth  
-from routes import songs, folders, playlists, settings, history, home
+from routes import songs, folders, playlists, settings, history, home, users
 
 app = FastAPI()
 
@@ -25,3 +25,4 @@ app.include_router(playlists.router, prefix="/api")
 app.include_router(settings.router, prefix="/api")  
 app.include_router(history.router, prefix="/api") 
 app.include_router(home.router, prefix="/api")
+app.include_router(users.router, prefix="/api")  

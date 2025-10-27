@@ -71,3 +71,22 @@ class PlayStartIn(BaseModel):
 class PlayEndIn(BaseModel):
     event_id: int
     position_end_sec: Optional[int] = None
+
+# ------------------
+# User
+# ------------------
+
+class UserData(BaseModel):  # renamed
+    id: int
+    username: str
+    display_name: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+class PasswordChangeIn(BaseModel):
+    current_password: str
+    new_password: str
+
+class DisplayNameChangeIn(BaseModel):
+    display_name: str

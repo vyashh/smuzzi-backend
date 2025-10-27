@@ -13,6 +13,7 @@ class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, nullable=False)
+    display_name = Column(String, nullable=True)
     password_hash = Column(String, nullable=False)
 
     folders = relationship("Folder", back_populates="user", cascade="all, delete-orphan")
