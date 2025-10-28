@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, Query, Header
 from fastapi.responses import FileResponse, Response, StreamingResponse
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 from database import SessionLocal
 from models import Song, Folder, User, Like
