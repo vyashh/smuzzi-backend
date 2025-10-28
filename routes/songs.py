@@ -4,13 +4,13 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 from database import SessionLocal
 from models import Song, Folder, User, Like
-from schemas import SongBase
+from schemas import SongBase, SongListOut
 from auth import get_current_user, dev_or_current_user
 from services.spotify import enrich_song_from_spotify
 from sqlalchemy.exc import IntegrityError
 
 import os, shlex, subprocess, mimetypes, time, uuid, threading, shutil
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Literal
 
 from utils.hls_signing import make_hls_token, verify_hls_token
 
@@ -174,10 +174,70 @@ def _touch(path: str):
         pass
 
 # ========= ENDPOINTS =========
+Sort = Literal["created_desc", "created_asc", "title_asc"] 
 
-@router.get("/songs", response_model=list[SongBase])
-def get_songs(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    return db.query(Song).join(Song.folder).filter(Song.folder.has(user_id=user.id)).all()
+@router.get("/songs", response_model=SongListOut)
+def get_songs(
+    limit: int = Query(100, ge=1, le=500),
+    cursor: Optional[int] = Query(None, description="id of last seen row"),
+    sort: Sort = "created_desc",
+    q: Optional[str] = None,
+    include_total: bool = False,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    base = (
+        db.query(Song)
+        .join(Song.folder)
+        .filter(Folder.user_id == user.id)
+    )
+
+    if q:
+        like = f"%{q}%"
+        base = base.filter(or_(
+            Song.title.ilike(like),
+            Song.artist.ilike(like),
+            Song.album.ilike(like),
+        ))
+
+    # ---------- Sorting + keyset pagination ----------
+    if sort == "created_desc":
+        # Newest → oldest
+        ordered = base.order_by(Song.created_at.desc(), Song.id.desc())
+        if cursor:
+            last = db.query(Song.created_at, Song.id).filter(Song.id == cursor).first()
+            if last:
+                ordered = ordered.filter(
+                    (Song.created_at < last.created_at) |
+                    ((Song.created_at == last.created_at) & (Song.id < last.id))
+                )
+
+    elif sort == "created_asc":
+        # Oldest → newest
+        ordered = base.order_by(Song.created_at.asc(), Song.id.asc())
+        if cursor:
+            last = db.query(Song.created_at, Song.id).filter(Song.id == cursor).first()
+            if last:
+                ordered = ordered.filter(
+                    (Song.created_at > last.created_at) |
+                    ((Song.created_at == last.created_at) & (Song.id > last.id))
+                )
+
+    else:  # sort == "title_asc"
+        ordered = base.order_by(Song.title.asc(), Song.id.asc())
+        if cursor:
+            # simple id-based paging; fine if titles aren’t heavily duplicated
+            ordered = ordered.filter(Song.id > cursor)
+
+    rows = ordered.limit(limit + 1).all()
+    items = rows[:limit]
+    next_cursor = items[-1].id if len(rows) == limit + 1 else None
+
+    return {
+        "items": [SongBase.model_validate(s) for s in items],
+        "nextCursor": next_cursor,
+        "total": base.count() if include_total else None,
+    }
 
 # ------ Progressive (default) ------
 @router.get("/stream/{song_id}")

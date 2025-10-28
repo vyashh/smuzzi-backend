@@ -18,6 +18,10 @@ class SongBase(BaseModel):
     class Config:
         from_attributes = True 
 
+class SongListOut(BaseModel):
+    items: List[SongBase]
+    nextCursor: Optional[int] = None
+    total: Optional[int] = None  
 
 # ------------------
 # Playlists
