@@ -94,3 +94,20 @@ class PasswordChangeIn(BaseModel):
 
 class DisplayNameChangeIn(BaseModel):
     display_name: str
+
+    # ------------------
+# Recent Searches
+# ------------------
+class RecentSearchOut(BaseModel):
+    id: int
+    song_id: int
+    searched_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class RecentSearchCreate(BaseModel):
+    song_id: int
+
+class RecentSearchListOut(BaseModel):
+    items: List[RecentSearchOut]

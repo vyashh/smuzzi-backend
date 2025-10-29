@@ -195,3 +195,13 @@ class ContextProgress(Base):
     updated_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(tz=AMS))
 
 UniqueConstraint(ContextProgress.user_id, ContextProgress.context_type, ContextProgress.context_id, name="uq_user_ctx")
+
+# ------------------
+# Recent Searches
+# ------------------
+class RecentSearch(Base):
+    __tablename__ = "recent_searches"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    song_id = Column(Integer, ForeignKey("songs.id", ondelete="CASCADE"), nullable=False, index=True)
+    searched_at = Column(TIMESTAMP, server_default=func.now(), index=True)
