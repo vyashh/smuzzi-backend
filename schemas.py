@@ -111,3 +111,24 @@ class RecentSearchCreate(BaseModel):
 
 class RecentSearchListOut(BaseModel):
     items: List[RecentSearchOut]
+
+class SongBrief(BaseModel):
+    id: int
+    title: str
+    artist: str | None = None
+    album: str | None = None
+    cover_url: str | None = None
+
+    class Config:
+        from_attributes = True
+
+class RecentSearchWithSongOut(BaseModel):
+    id: int
+    searched_at: datetime
+    song: SongBrief
+
+    class Config:
+        from_attributes = True
+
+class RecentSearchWithSongListOut(BaseModel):
+    items: list[RecentSearchWithSongOut]

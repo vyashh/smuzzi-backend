@@ -1,11 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import desc
 
 from database import SessionLocal
 from models import RecentSearch, Song, User
-from schemas import RecentSearchOut, RecentSearchCreate, RecentSearchListOut
+from schemas import RecentSearchOut, RecentSearchCreate, RecentSearchListOut, RecentSearchWithSongListOut
 from auth import get_current_user
+
 
 router = APIRouter(prefix="/recent-searches", tags=["recent-searches"])
 
@@ -17,7 +18,7 @@ def get_db():
     finally:
         db.close()
 
-@router.get("", response_model=RecentSearchListOut)
+@router.get("", response_model=RecentSearchWithSongListOut)
 def list_recent_searches(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -25,8 +26,9 @@ def list_recent_searches(
 ):
     items = (
         db.query(RecentSearch)
+        .options(joinedload(RecentSearch.song)) 
         .filter(RecentSearch.user_id == current_user.id)
-        .order_by(desc(RecentSearch.searched_at))
+        .order_by(RecentSearch.searched_at.desc())
         .limit(limit)
         .all()
     )

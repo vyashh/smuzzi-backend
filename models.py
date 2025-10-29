@@ -205,3 +205,4 @@ class RecentSearch(Base):
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     song_id = Column(Integer, ForeignKey("songs.id", ondelete="CASCADE"), nullable=False, index=True)
     searched_at = Column(TIMESTAMP, server_default=func.now(), index=True)
+    song = relationship("Song")  
